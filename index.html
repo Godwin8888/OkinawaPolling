@@ -215,21 +215,41 @@
     </div>
 
     <script>
+        // MASTER LIST: You can always add new items here later with a unique ID
         const defaultAttractions = [
-            { id: 1, name: "American Village", category: "Tourist Attraction", votes: 0, voters: [] },
-            { id: 2, name: "Naha Kokusai Dori Shopping Street", category: "Tourist Attraction", votes: 0, voters: [] },
-            { id: 3, name: "Makishi Public Market", category: "Public Market", votes: 0, voters: [] },
-            { id: 4, name: "Busena Marine Park Underwater Observatory", category: "Observatory Deck", votes: 0, voters: [] },
-            { id: 5, name: "Neo Park", category: "Zoo", votes: 0, voters: [] },
-            { id: 6, name: "Laulea Hotel", category: "4-star Hotel", votes: 0, voters: [] },
-            { id: 7, name: "Blue Cave", category: "Scenic Spot", votes: 0, voters: [] },
-            { id: 8, name: "Katsuren Castle Ruins", category: "Historical Landmark", votes: 0, voters: [] },
-            { id: 9, name: "Cape Manzamo", category: "Scenic Spot", votes: 0, voters: [] },
-            { id: 10, name: "Okinawa Churaumi Aquarium", category: "Tourist Attraction", votes: 0, voters: [] },
-            { id: 11, name: "Ryukyu Mura", category: "Cultural Theme Park", votes: 0, voters: [] }
+            { id: 1, name: "American Village", category: "Tourist Attraction" },
+            { id: 2, name: "Naha Kokusai Dori Shopping Street", category: "Tourist Attraction" },
+            { id: 3, name: "Makishi Public Market", category: "Public Market" },
+            { id: 4, name: "Busena Marine Park Underwater Observatory", category: "Observatory Deck" },
+            { id: 5, name: "Neo Park", category: "Zoo" },
+            { id: 6, name: "Laulea Hotel", category: "4-star Hotel" },
+            { id: 7, name: "Blue Cave", category: "Scenic Spot" },
+            { id: 8, name: "Katsuren Castle Ruins", category: "Historical Landmark" },
+            { id: 9, name: "Cape Manzamo", category: "Scenic Spot" },
+            { id: 10, name: "Okinawa Churaumi Aquarium", category: "Tourist Attraction" },
+            { id: 11, name: "Ryukyu Mura", category: "Cultural Theme Park" },
+	    { id: 12, name: "test", category: "test" }
         ];
 
-        let attractions = JSON.parse(localStorage.getItem('okinawa_multivote_poll')) || defaultAttractions;
+        // SMART MERGE FUNCTION: Preserves existing votes while importing any newly added list items
+        function loadAttractions() {
+            const savedData = JSON.parse(localStorage.getItem('okinawa_multivote_poll'));
+            
+            return defaultAttractions.map(defaultItem => {
+                // Check if this item already exists in saved local storage
+                const existingItem = savedData ? savedData.find(item => item.id === defaultItem.id) : null;
+                
+                if (existingItem) {
+                    // Keep existing votes and voter records safely
+                    return existingItem;
+                } else {
+                    // If it's a brand new addition, initialize with 0 votes
+                    return { ...defaultItem, votes: 0, voters: [] };
+                }
+            });
+        }
+
+        let attractions = loadAttractions();
 
         function renderPoll() {
             const container = document.getElementById('poll-container');
@@ -244,16 +264,16 @@
             let allActivity = {};
 
             attractions.forEach(item => {
-                totalAggregateVotes += item.votes;
+                totalAggregateVotes += (item.votes || 0);
 
-                // Compile activity log
-                item.voters.forEach(voter => {
-                    if (!allActivity[voter]) allActivity[voter] = [];
-                    allActivity[voter].push(item.name);
-                });
+                if (item.voters) {
+                    item.voters.forEach(voter => {
+                        if (!allActivity[voter]) allActivity[voter] = [];
+                        allActivity[voter].push(item.name);
+                    });
+                }
 
-                // Check if current typed name has already voted for this specific item
-                const hasVotedThis = currentName && item.voters.some(v => v.toLowerCase() === currentName);
+                const hasVotedThis = currentName && item.voters && item.voters.some(v => v.toLowerCase() === currentName);
                 
                 const optionElement = document.createElement('div');
                 optionElement.className = 'poll-option';
@@ -272,17 +292,16 @@
                     </div>
                     <div class="option-category">${item.category}</div>
                     <div class="stats">
-                        <span>${item.votes} votes</span>
+                        <span>${item.votes || 0} votes</span>
                         <span>Support count</span>
                     </div>
-                    <div class="progress-bar" style="width: ${Math.min(item.votes * 10, 100)}%;"></div>
+                    <div class="progress-bar" style="width: ${Math.min((item.votes || 0) * 10, 100)}%;"></div>
                 `;
                 container.appendChild(optionElement);
             });
 
             totalVotesElement.innerText = `Total Aggregate Votes Cast: ${totalAggregateVotes}`;
 
-            // Render activity log
             const activityKeys = Object.keys(allActivity);
             if (activityKeys.length > 0) {
                 activityList.innerHTML = activityKeys.map(voter => 
@@ -293,7 +312,6 @@
             }
         }
 
-        // Re-render when name changes to update button states dynamically
         document.getElementById('voter-name').addEventListener('input', renderPoll);
 
         function vote(id) {
@@ -308,14 +326,15 @@
 
             const item = attractions.find(att => att.id === id);
             if (item) {
-                // Double check if already voted for this specific item
+                if (!item.voters) item.voters = [];
+                
                 const alreadyVoted = item.voters.some(v => v.toLowerCase() === voterName.toLowerCase());
                 if (alreadyVoted) {
                     alert(`You have already voted for "${item.name}"!`);
                     return;
                 }
 
-                item.votes++;
+                item.votes = (item.votes || 0) + 1;
                 item.voters.push(voterName);
 
                 localStorage.setItem('okinawa_multivote_poll', JSON.stringify(attractions));
@@ -330,7 +349,7 @@
             if (password === "admin123") {
                 if (confirm("Are you sure you want to clear all data?")) {
                     localStorage.removeItem('okinawa_multivote_poll');
-                    attractions = JSON.parse(JSON.stringify(defaultAttractions));
+                    attractions = loadAttractions();
                     document.getElementById('voter-name').value = '';
                     renderPoll();
                     alert("Poll successfully reset.");
