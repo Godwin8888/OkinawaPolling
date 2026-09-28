@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Okinawa Attractions Poll - Multi-Vote</title>
+    <style>
+        :root {
+            --primary-color: #0284c7;
+            --primary-hover: #0369a1;
+            --success-color: #10b981;
+            --bg-color: #f0f9ff;
+            --card-bg: #ffffff;
+            --text-color: #334155;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+
+        .voter-box {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .voter-box input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .voter-box input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .voter-box label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+
+        .poll-option {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 4px;
+            z-index: 2;
+            position: relative;
+        }
+
+        .option-category {
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            background: #e0f2fe;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            z-index: 2;
+            position: relative;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 6px;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.4s ease;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #475569;
+            z-index: 2;
+            position: relative;
+        }
+
+        .vote-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .vote-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .vote-btn.voted {
+            background-color: var(--success-color);
+            cursor: default;
+        }
+
+        .total-votes {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .admin-container {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .admin-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .admin-btn:hover {
+            color: #ef4444;
+        }
+
+        .voters-log {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #64748b;
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🏝️ Okinawa Itinerary Poll</h1>
+        <p class="subtitle">Select your favorite locations (You can vote for multiple spots)</p>
+        
+        <div class="voter-box">
+            <label for="voter-name">Your Name:</label>
+            <input type="text" id="voter-name" placeholder="Type your name to cast votes..." autocomplete="off">
+        </div>
+
+        <div id="poll-container">
+            <!-- Dynamic poll options will load here -->
+        </div>
+
+        <div class="total-votes" id="total-votes">Total Aggregate Votes: 0</div>
+        
+        <div class="voters-log" id="voters-log">
+            <strong>Voter Activity Log:</strong>
+            <div id="activity-list" style="margin-top: 5px;">None yet</div>
+        </div>
+
+        <div class="admin-container">
+            <button class="admin-btn" onclick="adminReset()">Admin Reset</button>
+        </div>
+    </div>
+
+    <script>
+        const defaultAttractions = [
+            { id: 1, name: "American Village", category: "Tourist Attraction", votes: 0, voters: [] },
+            { id: 2, name: "Naha Kokusai Dori Shopping Street", category: "Tourist Attraction", votes: 0, voters: [] },
+            { id: 3, name: "Makishi Public Market", category: "Public Market", votes: 0, voters: [] },
+            { id: 4, name: "Busena Marine Park Underwater Observatory", category: "Observatory Deck", votes: 0, voters: [] },
+            { id: 5, name: "Neo Park", category: "Zoo", votes: 0, voters: [] },
+            { id: 6, name: "Laulea Hotel", category: "4-star Hotel", votes: 0, voters: [] },
+            { id: 7, name: "Blue Cave", category: "Scenic Spot", votes: 0, voters: [] },
+            { id: 8, name: "Katsuren Castle Ruins", category: "Historical Landmark", votes: 0, voters: [] },
+            { id: 9, name: "Cape Manzamo", category: "Scenic Spot", votes: 0, voters: [] },
+            { id: 10, name: "Okinawa Churaumi Aquarium", category: "Tourist Attraction", votes: 0, voters: [] }
+        ];
+
+        let attractions = JSON.parse(localStorage.getItem('okinawa_multivote_poll')) || defaultAttractions;
+
+        function renderPoll() {
+            const container = document.getElementById('poll-container');
+            const totalVotesElement = document.getElementById('total-votes');
+            const activityList = document.getElementById('activity-list');
+            container.innerHTML = '';
+
+            const nameInput = document.getElementById('voter-name');
+            const currentName = nameInput.value.trim().toLowerCase();
+
+            let totalAggregateVotes = 0;
+            let allActivity = {};
+
+            attractions.forEach(item => {
+                totalAggregateVotes += item.votes;
+
+                // Compile activity log
+                item.voters.forEach(voter => {
+                    if (!allActivity[voter]) allActivity[voter] = [];
+                    allActivity[voter].push(item.name);
+                });
+
+                // Check if current typed name has already voted for this specific item
+                const hasVotedThis = currentName && item.voters.some(v => v.toLowerCase() === currentName);
+                
+                const percentage = totalAggregateVotes > 0 ? Math.round((item.votes / Math.max(totalAggregateVotes, 1)) * 100) : 0; 
+                // Note: percentage calculation relative to aggregate or items. Let's use item share of total votes cast across board.
+                const optionElement = document.createElement('div');
+                optionElement.className = 'poll-option';
+                
+                let btnHtml = '';
+                if (hasVotedThis) {
+                    btnHtml = `<button class="vote-btn voted" disabled>Voted ✓</button>`;
+                } else {
+                    btnHtml = `<button class="vote-btn" onclick="vote(${item.id})">Vote</button>`;
+                }
+
+                optionElement.innerHTML = `
+                    <div class="option-header">
+                        <span>${item.name}</span>
+                        ${btnHtml}
+                    </div>
+                    <div class="option-category">${item.category}</div>
+                    <div class="stats">
+                        <span>${item.votes} votes</span>
+                        <span>Support count</span>
+                    </div>
+                    <div class="progress-bar" style="width: ${Math.min(item.votes * 10, 100)}%;"></div>
+                `;
+                container.appendChild(optionElement);
+            });
+
+            totalVotesElement.innerText = `Total Aggregate Votes Cast: ${totalAggregateVotes}`;
+
+            // Render activity log
+            const activityKeys = Object.keys(allActivity);
+            if (activityKeys.length > 0) {
+                activityList.innerHTML = activityKeys.map(voter => 
+                    `<div>• <b>${voter}</b> voted for: ${allActivity[voter].join(', ')}</div>`
+                ).join('');
+            } else {
+                activityList.innerHTML = 'None yet';
+            }
+        }
+
+        // Re-render when name changes to update button states dynamically
+        document.getElementById('voter-name').addEventListener('input', renderPoll);
+
+        function vote(id) {
+            const nameInput = document.getElementById('voter-name');
+            const voterName = nameInput.value.trim();
+
+            if (!voterName) {
+                alert("Please type your name before voting!");
+                nameInput.focus();
+                return;
+            }
+
+            const item = attractions.find(att => att.id === id);
+            if (item) {
+                // Double check if already voted for this specific item
+                const alreadyVoted = item.voters.some(v => v.toLowerCase() === voterName.toLowerCase());
+                if (alreadyVoted) {
+                    alert(`You have already voted for "${item.name}"!`);
+                    return;
+                }
+
+                item.votes++;
+                item.voters.push(voterName);
+
+                localStorage.setItem('okinawa_multivote_poll', JSON.stringify(attractions));
+                renderPoll();
+                alert(`Vote registered for "${item.name}"!`);
+            }
+        }
+
+        function adminReset() {
+            const password = prompt("Enter admin password to reset the poll:");
+            
+            if (password === "admin123") {
+                if (confirm("Are you sure you want to clear all data?")) {
+                    localStorage.removeItem('okinawa_multivote_poll');
+                    attractions = JSON.parse(JSON.stringify(defaultAttractions));
+                    document.getElementById('voter-name').value = '';
+                    renderPoll();
+                    alert("Poll successfully reset.");
+                }
+            } else if (password !== null) {
+                alert("Incorrect password!");
+            }
+        }
+
+        renderPoll();
+    </script>
+</body>
+</html>
