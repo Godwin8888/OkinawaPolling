@@ -225,7 +225,8 @@
             { id: 7, name: "Blue Cave", category: "Scenic Spot", votes: 0, voters: [] },
             { id: 8, name: "Katsuren Castle Ruins", category: "Historical Landmark", votes: 0, voters: [] },
             { id: 9, name: "Cape Manzamo", category: "Scenic Spot", votes: 0, voters: [] },
-            { id: 10, name: "Okinawa Churaumi Aquarium", category: "Tourist Attraction", votes: 0, voters: [] }
+            { id: 10, name: "Okinawa Churaumi Aquarium", category: "Tourist Attraction", votes: 0, voters: [] },
+            { id: 11, name: "Ryukyu Mura", category: "Cultural Theme Park", votes: 0, voters: [] }
         ];
 
         let attractions = JSON.parse(localStorage.getItem('okinawa_multivote_poll')) || defaultAttractions;
@@ -254,8 +255,6 @@
                 // Check if current typed name has already voted for this specific item
                 const hasVotedThis = currentName && item.voters.some(v => v.toLowerCase() === currentName);
                 
-                const percentage = totalAggregateVotes > 0 ? Math.round((item.votes / Math.max(totalAggregateVotes, 1)) * 100) : 0; 
-                // Note: percentage calculation relative to aggregate or items. Let's use item share of total votes cast across board.
                 const optionElement = document.createElement('div');
                 optionElement.className = 'poll-option';
                 
