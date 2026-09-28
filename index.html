@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Okinawa Attractions Poll - Multi-Vote</title>
+    <title>Okinawa Attractions Poll - Live Cloud Sync</title>
     <style>
         :root {
             --primary-color: #0284c7;
@@ -38,7 +38,15 @@
         h1 {
             text-align: center;
             color: #0f172a;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+        }
+
+        .sync-status {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--success-color);
+            margin-bottom: 15px;
+            font-weight: 600;
         }
 
         p.subtitle {
@@ -191,7 +199,8 @@
 
     <div class="container">
         <h1>🏝️ Okinawa Itinerary Poll</h1>
-        <p class="subtitle">Select your favorite locations (You can vote for multiple spots)</p>
+        <div class="sync-status" id="sync-status">🔄 Connecting to live cloud database...</div>
+        <p class="subtitle">Select your favorite locations (Votes sync globally)</p>
         
         <div class="voter-box">
             <label for="voter-name">Your Name:</label>
@@ -206,7 +215,7 @@
         
         <div class="voters-log" id="voters-log">
             <strong>Voter Activity Log:</strong>
-            <div id="activity-list" style="margin-top: 5px;">None yet</div>
+            <div id="activity-list" style="margin-top: 5px;">Loading logs...</div>
         </div>
 
         <div class="admin-container">
@@ -215,42 +224,83 @@
     </div>
 
     <script>
-        // MASTER LIST: You can always add new items here later with a unique ID
+        // CONFIGURATION FOR CLOUD STORAGE
+        const BIN_ID = "6aba26efffd5d1605336df0b";
+        const API_KEY = "$2a$10$93P98jCPGFzPEpazkEbpp.mMqQmyJZAqDNK2s9wOzySA07mF1j86C"; // <-- Replace this with your JSONBin Master Key
+
+        // Fallback default list structure in case cloud fetch is empty
         const defaultAttractions = [
-            { id: 1, name: "American Village", category: "Tourist Attraction" },
-            { id: 2, name: "Naha Kokusai Dori Shopping Street", category: "Tourist Attraction" },
-            { id: 3, name: "Makishi Public Market", category: "Public Market" },
-            { id: 4, name: "Busena Marine Park Underwater Observatory", category: "Observatory Deck" },
-            { id: 5, name: "Neo Park", category: "Zoo" },
-            { id: 6, name: "Laulea Hotel", category: "4-star Hotel" },
-            { id: 7, name: "Blue Cave", category: "Scenic Spot" },
-            { id: 8, name: "Katsuren Castle Ruins", category: "Historical Landmark" },
-            { id: 9, name: "Cape Manzamo", category: "Scenic Spot" },
-            { id: 10, name: "Okinawa Churaumi Aquarium", category: "Tourist Attraction" },
-            { id: 11, name: "Ryukyu Mura", category: "Cultural Theme Park" },
-	    { id: 12, name: "test", category: "test" },
-	    { id: 13, name: "test2", category: "test2" }
+            { id: 1, name: "American Village", category: "Tourist Attraction", votes: 0, voters: [] },
+            { id: 2, name: "Naha Kokusai Dori Shopping Street", category: "Tourist Attraction", votes: 0, voters: [] },
+            { id: 3, name: "Makishi Public Market", category: "Public Market", votes: 0, voters: [] },
+            { id: 4, name: "Busena Marine Park Underwater Observatory", category: "Observatory Deck", votes: 0, voters: [] },
+            { id: 5, name: "Neo Park", category: "Zoo", votes: 0, voters: [] },
+            { id: 6, name: "Laulea Hotel", category: "4-star Hotel", votes: 0, voters: [] },
+            { id: 7, name: "Blue Cave", category: "Scenic Spot", votes: 0, voters: [] },
+            { id: 8, name: "Katsuren Castle Ruins", category: "Historical Landmark", votes: 0, voters: [] },
+            { id: 9, name: "Cape Manzamo", category: "Scenic Spot", votes: 0, voters: [] },
+            { id: 10, name: "Okinawa Churaumi Aquarium", category: "Tourist Attraction", votes: 0, voters: [] },
+            { id: 11, name: "Ryukyu Mura", category: "Cultural Theme Park", votes: 0, voters: [] }
         ];
 
-        // SMART MERGE FUNCTION: Preserves existing votes while importing any newly added list items
-        function loadAttractions() {
-            const savedData = JSON.parse(localStorage.getItem('okinawa_multivote_poll'));
-            
-            return defaultAttractions.map(defaultItem => {
-                // Check if this item already exists in saved local storage
-                const existingItem = savedData ? savedData.find(item => item.id === defaultItem.id) : null;
+        let attractions = [];
+
+        // Fetch latest votes from JSONBin cloud database
+        async function fetchVotes() {
+            const statusEl = document.getElementById('sync-status');
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: {
+                        'X-Master-Key': API_KEY
+                    }
+                });
                 
-                if (existingItem) {
-                    // Keep existing votes and voter records safely
-                    return existingItem;
-                } else {
-                    // If it's a brand new addition, initialize with 0 votes
-                    return { ...defaultItem, votes: 0, voters: [] };
-                }
-            });
+                if (!response.ok) throw new Error("Failed to fetch from cloud");
+                
+                const result = await response.json();
+                const cloudData = result.record.attractions;
+
+                // Smart merge: ensure new options exist even if cloud data is older/shorter
+                attractions = defaultAttractions.map(defItem => {
+                    const found = cloudData.find(c => c.id === defItem.id);
+                    return found ? found : { ...defItem, votes: 0, voters: [] };
+                });
+
+                statusEl.innerText = "🟢 Connected live to cloud database";
+                renderPoll();
+            } catch (error) {
+                console.error(error);
+                statusEl.innerText = "🔴 Connection error. Using fallback local data.";
+                statusEl.style.color = "#ef4444";
+                attractions = defaultAttractions;
+                renderPoll();
+            }
         }
 
-        let attractions = loadAttractions();
+        // Save updated votes to JSONBin cloud database
+        async function saveVotesToCloud() {
+            const statusEl = document.getElementById('sync-status');
+            statusEl.innerText = "💾 Saving vote to cloud...";
+            
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify({ attractions: attractions })
+                });
+
+                if (!response.ok) throw new Error("Failed to save to cloud");
+
+                statusEl.innerText = "🟢 Connected live to cloud database";
+            } catch (error) {
+                console.error(error);
+                statusEl.innerText = "🔴 Error saving vote to cloud!";
+                statusEl.style.color = "#ef4444";
+            }
+        }
 
         function renderPoll() {
             const container = document.getElementById('poll-container');
@@ -315,7 +365,7 @@
 
         document.getElementById('voter-name').addEventListener('input', renderPoll);
 
-        function vote(id) {
+        async function vote(id) {
             const nameInput = document.getElementById('voter-name');
             const voterName = nameInput.value.trim();
 
@@ -338,29 +388,33 @@
                 item.votes = (item.votes || 0) + 1;
                 item.voters.push(voterName);
 
-                localStorage.setItem('okinawa_multivote_poll', JSON.stringify(attractions));
                 renderPoll();
-                alert(`Vote registered for "${item.name}"!`);
+                await saveVotesToCloud();
+                alert(`Vote registered for "${item.name}" across the cloud!`);
             }
         }
 
-        function adminReset() {
+        async function adminReset() {
             const password = prompt("Enter admin password to reset the poll:");
             
             if (password === "admin123") {
-                if (confirm("Are you sure you want to clear all data?")) {
-                    localStorage.removeItem('okinawa_multivote_poll');
-                    attractions = loadAttractions();
+                if (confirm("Are you sure you want to clear all cloud data?")) {
+                    attractions = defaultAttractions.map(item => ({ ...item, votes: 0, voters: [] }));
                     document.getElementById('voter-name').value = '';
                     renderPoll();
-                    alert("Poll successfully reset.");
+                    await saveVotesToCloud();
+                    alert("Poll successfully reset globally.");
                 }
             } else if (password !== null) {
                 alert("Incorrect password!");
             }
         }
 
-        renderPoll();
+        // Initial fetch when page loads
+        fetchVotes();
+        
+        // Optional: Auto-refresh votes every 10 seconds to catch live votes from other users automatically
+        setInterval(fetchVotes, 10000);
     </script>
 </body>
 </html>
